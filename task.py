@@ -42,7 +42,6 @@ def update_history_record():
         ids = h_db.get_history_id_by_date(year_str, month_str)
         for record_id in ids:
             cargo_id = record_id['id'][6:]
-            record = {}
             with InventoryDB() as i_db:
                 data = i_db.get_inventory_by_id(cargo_id)
                 record = {
@@ -60,3 +59,6 @@ def start_scheduler():
     scheduler.add_job(create_history_record, 'cron', day=1, hour=2, minute=0)
     scheduler.add_job(update_history_record, 'cron', day='last', hour=23, minute=0)
     scheduler.start()
+
+# if __name__ == '__main__':
+#     start_scheduler()

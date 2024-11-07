@@ -1,9 +1,9 @@
 from datetime import datetime
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, session
 from db.userDB import UserDB
 from db.employeeDB import EmployeeDB
-from utils.utils import generate_id
+from utils.utils import generate_id, login_required
 from utils.threading_utils import run_in_thread
 # 创建蓝图对象
 users_bp = Blueprint('users', __name__, url_prefix='/users')
@@ -39,7 +39,7 @@ def list_user_by_id(user_id):
 
 # 登录验证
 @users_bp.route('/login', methods=['POST'])
-def login_authentication():
+def login():
     data = request.get_json()
     username = data.get('username')
     hashed_password = data.get('password')
@@ -49,6 +49,8 @@ def login_authentication():
             if not result:
                 return jsonify({"success": False}), 401
             else:
+                session['login'] = True
+                session['username'] = username
                 return jsonify({"success": True}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -58,11 +60,13 @@ def login_authentication():
 def create_user():
     data = request.get_json()
     print(data)
-    employee_id = data.get('employee_id')
+    employee_name = data.get('employee_name')
     try:
         with EmployeeDB() as e_db:
+            employee_id = e_db.get_employee_by_name_or_id(employee_id=None, employee_name=employee_name)['employee_id']
+            print(f'employee_id: {employee_id}')
             # 验证员工是否已存在，若给定的员工姓名不匹配数据库中的任何记录，返回错误
-            if not e_db.employee_exists(employee_id=employee_id):
+            if not employee_id:
                 return jsonify(
                     {"success": False, "message": "该员工id不存在, 请先创建员工数据!"}), 401
         with UserDB() as u_db:
