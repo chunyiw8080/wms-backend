@@ -22,7 +22,7 @@ app.register_blueprint(project_bp)
 
 
 @app.before_request
-def before_request_handler:
+def before_request_handler():
     session.permanent = True
 
     # 如果是登录和登出等不需要验证的路由，跳过检查
