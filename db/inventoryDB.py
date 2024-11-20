@@ -50,6 +50,21 @@ class InventoryDB(DatabaseManager):
             params = (per_page, offset)
         return self.fetch_query(query, params, single=False)
 
+    def get_all_inventories(self, category: str = None) -> List[Dict]:
+        if category:
+            query = """
+            SELECT cargo_id, cargo_name, model, categories, count, price, deleted, count * price as total_price FROM inventory
+            WHERE deleted IS FALSE AND categories = %s
+            """
+            params = (category, )
+        else:
+            query = """
+            SELECT cargo_id, cargo_name, model, categories, count, price, deleted, count * price as total_price FROM inventory
+            WHERE deleted IS FALSE
+            """
+            params = ()
+        return self.fetch_query(query, params, single=False)
+
     def get_inventory_by_id(self, cargo_id):
         """基于id获取库存条目信息"""
         query = """
@@ -143,6 +158,7 @@ class InventoryDB(DatabaseManager):
         """获取所有的分类"""
         query = """
         SELECT categories FROM inventory
+        GROUP BY categories
         """
         return self.fetch_query(query, params=None, single=False)
 

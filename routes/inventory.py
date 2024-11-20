@@ -63,6 +63,18 @@ def list_inventories_by_page(page_number):
     except Exception as e:
         return jsonify({"error": str(e)})
 
+@inventory_bp.route('/all', methods=['GET'])
+def get_all_inventories():
+    category = request.args.get('category')
+    try:
+        with InventoryDB() as db:
+            res = db.get_all_inventories(category=category)
+            if res:
+                return jsonify({"success": True, "data": res})
+            else:
+                return jsonify({"success": False, "message": "无数据"})
+    except Exception as e:
+        return jsonify({"error": str(e)})
 
 @inventory_bp.route('/<cargo_id>', methods=['GET'])
 def get_inventory_by_id(cargo_id):
@@ -79,10 +91,8 @@ def get_inventory_by_id(cargo_id):
 
 @inventory_bp.route('/create', methods=['POST'])
 def create_inventory():
-    print(f"Raw data: {request.data}")
-    print(f"Content-Type: {request.content_type}")
     data = request.get_json()
-    print(f"data type: {type(data)}, data: {data}")
+    print(f"data length: {len(data)}")
 
     try:
         with InventoryDB() as db:
@@ -111,6 +121,32 @@ def create_inventory():
     except Exception as e:
         print(str(e))
         return jsonify({"error": str(e)})
+
+@inventory_bp.route('/import', methods=['POST'])
+def import_inventory():
+    data = request.get_json()
+    dataset = data['dataset']
+    length = len(data['dataset'])
+    skipped, imported = 0, 0
+    skipped_row = []
+    with InventoryDB() as db:
+        for i in range(length):
+            # print(f'dataset: {dataset[i].get('cargo_name')}')
+            count = db.get_total_inventory_count()
+            cargo_id = "C" + generate_id(count)
+            dataset[i].update({'cargo_id': cargo_id})
+            exists = db.cargo_model_exists(dataset[i].get('cargo_name'), dataset[i].get('model'))
+            if exists:
+                skipped += 1
+                skipped_row.append(f'{i}. {dataset[i].get("cargo_name")} - {dataset[i].get("model")}')
+            else:
+                res = db.create_inventory(inventory_info=dataset[i])
+                imported += 1 if res else 0
+    if imported == 0:
+        print(skipped_row)
+        return jsonify({"success": False, "skipped_row": skipped_row})
+    else:
+        return jsonify({"success": True, "imported": imported, "skipped": skipped, "skipped_row": skipped_row})
 
 @inventory_bp.route('/update/<cargo_id>', methods=['POST'])
 def update_inventory_by_id(cargo_id):
