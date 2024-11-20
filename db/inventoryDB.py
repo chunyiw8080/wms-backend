@@ -1,25 +1,83 @@
 import os
 import sys
-from typing import Dict
+from typing import Dict, List
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from baseDB import DatabaseManager
 
 
 class InventoryDB(DatabaseManager):
-    def show_inventories(self):
+    def show_inventory_count(self, data: dict = None) -> int:
+        """此函数计算库存条目总数，不包括已经被标记为删除的条目"""
+        params = []
         query = """
-        SELECT cargo_id, cargo_name, model, categories, count, price, count * price as total_price FROM inventory
+        SELECT COUNT(*) as count FROM inventory
+        WHERE deleted IS FALSE
         """
-        return self.fetch_query(query)
+        if data:
+            if data["category"]:
+                query += f" AND categories = %s"
+                params.append(data["category"])
+            if data["cargo_name"]:
+                query += f" AND cargo_name = %s"
+                params.append(data["cargo_name"])
+            if data["model"]:
+                query += f" AND model = %s"
+                params.append(data["model"])
+
+            result = self.fetch_query(query, params, single=True)
+        else:
+            result = self.fetch_query(query, single=True)
+        print(result)
+        return result['count']
+
+    def show_inventories_paginated(self, page=1, per_page=20, category: str = None):
+        """此函数根据页数返回库存数据，每页默认20条"""
+        offset = (page - 1) * per_page
+        if category:
+            query = """
+            SELECT cargo_id, cargo_name, model, categories, count, price, deleted, count * price as total_price FROM inventory
+            WHERE deleted IS FALSE AND categories = %s
+            LIMIT %s OFFSET %s
+            """
+            params = (category, per_page, offset)
+        else:
+            query = """
+            SELECT cargo_id, cargo_name, model, categories, count, price, deleted, count * price as total_price FROM inventory
+            WHERE deleted IS FALSE
+            LIMIT %s OFFSET %s
+            """
+            params = (per_page, offset)
+        return self.fetch_query(query, params, single=False)
 
     def get_inventory_by_id(self, cargo_id):
+        """基于id获取库存条目信息"""
         query = """
         SELECT cargo_id, cargo_name, model, categories, count, price, count * price as total_price FROM inventory
         WHERE cargo_id = %s
         """
         params = (cargo_id,)
         return self.fetch_query(query, params, single=True)
+
+    def get_inventory_by_name_and_model(self, data: dict) -> bool:
+        """基于货品名称和型号获取库存条目信息"""
+        params = []
+        conditions = []
+        base_query = """
+        SELECT cargo_id, cargo_name, model, categories, count, price, count * price as total_price FROM inventory
+        """
+        # 动态生成查询条件
+        if data.get('cargo_name'):
+            conditions.append("cargo_name = %s")
+            params.append(data['cargo_name'])
+        if data.get('model'):
+            conditions.append("model = %s")
+            params.append(data['model'])
+        # 拼接条件
+        if conditions:
+            base_query += " WHERE " + " AND ".join(conditions)
+        query = base_query + ";"
+        return self.fetch_query(query, params, single=False)
 
     def cargo_model_exists(self, cargo_name: str, model: str) -> bool:
         query = """
@@ -32,6 +90,7 @@ class InventoryDB(DatabaseManager):
         return result['count'] > 0
 
     def create_inventory(self, inventory_info: Dict[str, str]) -> bool:
+        """创建库存条目数据 - deleted字段在数据库中设置的默认值为False(0)，因此没有在这里设置"""
         query = """
         INSERT INTO inventory (cargo_id, cargo_name, model, categories, count, price)
         VALUES (%s, %s, %s, %s, %s, %s)
@@ -48,11 +107,12 @@ class InventoryDB(DatabaseManager):
         UPDATE inventory SET cargo_name = %s, model = %s, categories = %s
         WHERE cargo_id = %s
         """
-        params = (data['cargo_name'], data['model'], data['categories'])
+        params = (data['cargo_name'], data['model'], data['categories'], data['cargo_id'])
         result = self.execute_query(query, params)
         return result
 
     def get_total_inventory_count(self) -> int:
+        """这个函数计算库存条目总数，包括已经被标记为删除的条目"""
         query = """
         SELECT COUNT(*) as count FROM inventory
         """
@@ -78,3 +138,26 @@ class InventoryDB(DatabaseManager):
         """
         # 执行查询并传递 cargo_ids 作为参数
         return self.execute_query(query, cargo_ids)
+
+    def get_categories(self):
+        """获取所有的分类"""
+        query = """
+        SELECT categories FROM inventory
+        """
+        return self.fetch_query(query, params=None, single=False)
+
+    def batch_delete_inventories(self, id_list: List[str]) -> bool:
+        """批量删除数据 - 数据被标记为删除，不在前端显示，默认在被删除30天后从数据库中自动删除"""
+        placeholders = ', '.join(['%s'] * len(id_list))
+        query = f"UPDATE inventory SET deleted = 1 WHERE cargo_id IN ({placeholders})"
+        print(f'delete query: {query}')
+        result = self.execute_query(query, id_list)
+        return result
+
+    def search_by_category(self, category: str) -> bool:
+        query = """
+        SELECT cargo_id, cargo_name, model, categories, count, price, count * price as total_price FROM inventory
+        WHERE categories = %s AND deleted IS FALSE
+        """
+        params = (category,)
+        return self.fetch_query(query, params, single=False)

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>订单表格</title>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 8px;
+            border: 1px solid #ddd;
+            text-align: center;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+
+<h2>订单表格</h2>
+
+<table>
+    <thead>
+        <tr>
+            {# 动态加载表头 #}
+            {% for key in data[0].keys() %}
+            <th>{{ key_translation[key] }}</th>
+            {% endfor %}
+        </tr>
+    </thead>
+    <tbody>
+    {% for item in data %}
+        <tr>
+            <td>{{ item.order_id }}</td>
+            <td>{{ '入库' if item.order_type == 'inbound' else '出库' }}</td>
+            <td>电动机</td>
+            <td>EM1234</td>
+            <td>50</td>
+            <td>广源电子</td>
+            <td>项目A</td>
+            <td>已提交</td>
+            <td>张三</td>
+            <td>2024-11-01 09:15</td>
+            <td>2024-11-02 10:30</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+</body>
+</html>

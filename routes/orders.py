@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, render_template
 from db.ordersDB import OrdersDB
 from db.inventoryDB import InventoryDB
 from utils.utils import generate_id
@@ -10,6 +10,20 @@ from utils.threading_utils import run_in_thread
 # 创建蓝图对象
 order_bp = Blueprint('orders', __name__, url_prefix='/orders')
 
+key_translation = {
+    'order_id': '订单编号',
+    'order_type': '订单类型',
+    'cargo_id': '货物编号',
+    'price': '价格',
+    'provider': '供应商',
+    'project': '项目',
+    'status': '状态',
+    'employee_id': '员工编号',
+    'published_at': '发布时间',
+    'processed_at': '处理时间',
+    'count': '数量'
+}
+
 
 @order_bp.route('/all', methods=['GET'])
 def get_all_orders():
@@ -18,6 +32,8 @@ def get_all_orders():
             res = db.list_orders(order_id=None)
             if res:
                 return jsonify({"success": True, "data": res})
+                # print(res)
+                # return render_template('table.html', data=res, key_translation=key_translation)
             else:
                 return jsonify({"success": False, "message": "无订单数据"})
     except Exception as e:
