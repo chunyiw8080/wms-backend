@@ -1,3 +1,5 @@
+from pytz import timezone
+from threading import Thread
 from db.inventoryDB import InventoryDB
 from db.historyDB import HistoryDB
 from datetime import datetime
@@ -55,10 +57,15 @@ def update_history_record():
 
 
 def start_scheduler():
-    scheduler = BackgroundScheduler()
-    scheduler.add_job(create_history_record, 'cron', day=1, hour=2, minute=0)
+    print("start_scheduler")
+    scheduler = BackgroundScheduler(timezone=timezone('Asia/Shanghai'))
+    scheduler.add_job(create_history_record, 'cron', day=6, hour=15, minute=39)
     scheduler.add_job(update_history_record, 'cron', day='last', hour=23, minute=0)
     scheduler.start()
+
+def start_scheduler_in_thread():
+    thread = Thread(target=start_scheduler, daemon=True)
+    thread.start()
 
 # if __name__ == '__main__':
 #     start_scheduler()

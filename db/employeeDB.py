@@ -9,6 +9,7 @@ class EmployeeDB(DatabaseManager):
     def fetch_employees(self):
         query = """
         SELECT * FROM employee
+        WHERE deleted = 0;
         """
         return self.fetch_query(query)
 
@@ -51,9 +52,27 @@ class EmployeeDB(DatabaseManager):
             params.append(employee_name)
         return self.fetch_query(query, params, single=True)
 
+    def search_employee(self, condition: str):
+        query = """
+        SELECT * FROM employee
+        WHERE employee_name LIKE %s OR position LIKE %s;
+        """
+        condition = f"%{condition}%"
+        params = (condition, condition, )
+        return self.fetch_query(query, params, single=False)
+
+    def get_employee_id_by_name(self, employee_name: str = None):
+        query = """
+        SELECT employee_id FROM employee
+        WHERE employee_name = %s
+        """
+        params = (employee_name, )
+        return self.fetch_query(query, params, single=True)
+
     def delete_employee(self, employee_id: str) -> bool:
         query = """
-        DELETE FROM employee
+        UPDATE employee
+        SET deleted = 1
         WHERE employee_id = %s
         """
         params = (employee_id,)

@@ -59,7 +59,7 @@ def get_order_price(db: OrdersDB, order_id: str) -> Decimal:
         return None
 
 
-def calculate_new_price(db: OrdersDB, order_id: str) -> Decimal:
+def calculate_new_price(db: OrdersDB, order_id: str, order_type: str) -> Decimal:
     current_price = get_current_price(db, order_id)
     order_price = get_order_price(db, order_id)
     current_count = get_current_inventory_count(db, order_id)
@@ -67,5 +67,9 @@ def calculate_new_price(db: OrdersDB, order_id: str) -> Decimal:
     # print(f'current_price: {current_price}, order_price: {order_price}, current_count: {current_count}, order_count: {order_count}')
 
     if current_price and order_price and current_count and order_count:
-        new_price = (current_count * current_price + order_count * order_price) / (current_count + order_count)
-        return new_price
+        if order_type == 'inbound':
+            new_price = (current_count * current_price + order_count * order_price) / (current_count + order_count)
+            return new_price
+        elif order_type == 'outbound':
+            new_price = (current_price * current_count - order_count * order_price) / (current_count - order_count)
+            return new_price

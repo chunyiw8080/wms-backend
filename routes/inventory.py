@@ -2,9 +2,10 @@ from decimal import Decimal
 
 from flask import Blueprint, jsonify, request
 from unicodedata import decimal
-
+from utils.token_authentication import token_required
 from db.inventoryDB import InventoryDB
 from utils.utils import generate_id
+
 inventory_bp = Blueprint('inventories', __name__, url_prefix='/inventory')
 
 
@@ -48,8 +49,12 @@ def get_data_count():
     #     except Exception as e:
     #         return jsonify({"error": str(e)})
 
+
+
 @inventory_bp.route('/page/<page_number>', methods=['GET'])
+# @token_required
 def list_inventories_by_page(page_number):
+    print(request.headers)
     category = request.args.get('category')
     try:
         with InventoryDB() as db:
@@ -59,9 +64,11 @@ def list_inventories_by_page(page_number):
                 print(f'data: {category}')
                 res = db.show_inventories_paginated(page=int(page_number), category=category)
 
-            return jsonify({"success": True, "data": res}) if res else jsonify({"success": False, "message": "没有库存数据"})
+            return jsonify({"success": True, "data": res}) if res else jsonify(
+                {"success": False, "message": "没有库存数据"})
     except Exception as e:
         return jsonify({"error": str(e)})
+
 
 @inventory_bp.route('/all', methods=['GET'])
 def get_all_inventories():
@@ -75,6 +82,7 @@ def get_all_inventories():
                 return jsonify({"success": False, "message": "无数据"})
     except Exception as e:
         return jsonify({"error": str(e)})
+
 
 @inventory_bp.route('/<cargo_id>', methods=['GET'])
 def get_inventory_by_id(cargo_id):
@@ -122,6 +130,7 @@ def create_inventory():
         print(str(e))
         return jsonify({"error": str(e)})
 
+
 @inventory_bp.route('/import', methods=['POST'])
 def import_inventory():
     data = request.get_json()
@@ -147,6 +156,7 @@ def import_inventory():
         return jsonify({"success": False, "skipped_row": skipped_row})
     else:
         return jsonify({"success": True, "imported": imported, "skipped": skipped, "skipped_row": skipped_row})
+
 
 @inventory_bp.route('/update/<cargo_id>', methods=['POST'])
 def update_inventory_by_id(cargo_id):
@@ -178,6 +188,7 @@ def get_categories():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
 @inventory_bp.route('/delete', methods=['DELETE'])
 def batch_delete_inventory():
     data = request.get_json()
@@ -191,6 +202,7 @@ def batch_delete_inventory():
                 return jsonify({'success': False}), 401
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 @inventory_bp.route('/search', methods=['GET'])
 def search_inventory():
@@ -208,7 +220,8 @@ def search_inventory():
                 res = db.get_inventory_by_name_and_model(data=data)
             else:
                 res = db.search_by_category(data['category'])
-            return jsonify({"success": True, "data": res}) if res else jsonify({"success": False, 'message': "没有匹配的数据"})
+            return jsonify({"success": True, "data": res}) if res else jsonify(
+                {"success": False, 'message': "没有匹配的数据"})
     except Exception as e:
         print(str(e))
         return jsonify({"error": str(e)}), 500

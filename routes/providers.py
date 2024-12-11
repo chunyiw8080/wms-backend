@@ -53,3 +53,31 @@ def delete_provider(provider_name):
                     return jsonify({'success': False, 'message': '删除失败'})
     except Exception as e:
         return jsonify({'error': str(e)})
+
+@provider_bp.route('/search', methods=['GET'])
+def search_project():
+    provider_name = request.args.get('name')
+    try:
+        with ProviderProjectDB() as db:
+            res = db.search('provider', 'provider_name', provider_name)
+            print(res)
+            if res:
+                return jsonify({'success': True, 'data': [res]})
+            else:
+                return jsonify({'success': False})
+    except Exception as e:
+        return jsonify({'error': str(e)})
+
+@provider_bp.route('/update/<provider_name>', methods=['POST'])
+def update_project(provider_name):
+    data = request.get_json()
+    print(data['provider_name'])
+    try:
+        with ProviderProjectDB() as db:
+            res = db.update('provider', 'provider_name', data['provider_name'], provider_name)
+            if res:
+                return jsonify({'success': True})
+            else:
+                return jsonify({'success': False})
+    except Exception as e:
+        return jsonify({'error': str(e)})

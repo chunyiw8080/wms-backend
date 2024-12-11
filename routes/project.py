@@ -52,3 +52,32 @@ def delete_project(project_name):
                     return jsonify({'success': False, 'message': '删除失败'})
     except Exception as e:
         return jsonify({'error': str(e)})
+
+@project_bp.route('/search', methods=['GET'])
+def search_project():
+    project_name = request.args.get('name')
+    try:
+        with ProviderProjectDB() as db:
+            res = db.search('project', 'project_name', project_name)
+            print(res)
+            if res:
+                return jsonify({'success': True, 'data': [res]})
+            else:
+                return jsonify({'success': False})
+    except Exception as e:
+        return jsonify({'error': str(e)})
+
+@project_bp.route('/update/<project_name>', methods=['POST'])
+def update_project(project_name):
+    data = request.get_json()
+    print(data['project_name'])
+    try:
+        with ProviderProjectDB() as db:
+            res = db.update('project', 'project_name', data['project_name'], project_name)
+            if res:
+                return jsonify({'success': True})
+            else:
+                return jsonify({'success': False})
+    except Exception as e:
+        return jsonify({'error': str(e)})
+

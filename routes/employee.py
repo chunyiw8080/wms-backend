@@ -11,7 +11,10 @@ def list_all_employees():
     try:
         with EmployeeDB() as db:
             employees = db.fetch_employees()
-            return jsonify(employees)
+            if employees:
+                return jsonify({"success": True, "data": employees})
+            else:
+                return jsonify({"success": False, "message": "没有员工数据"})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -45,31 +48,46 @@ def list_employee_by_id(employee_id):
         with EmployeeDB() as db:
             employee = db.get_employee_by_name_or_id(employee_id=employee_id)
             if employee:
-                return jsonify({"success": True, "employee": employee})
+                return jsonify({"success": True, "data": employee})
             else:
                 return jsonify({"success": False, "message": "用户不存在"})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-
-@employee_bp.route('/delete/<employee_id>', methods=['DELETE'])
-def delete_employee_by_id(employee_id):
+@employee_bp.route('/search', methods=['GET'])
+def search_employees_by_conditions():
+    condition = request.args.get('condition')
     try:
         with EmployeeDB() as db:
-            exists = db.employee_exists(employee_id=employee_id)
-            if exists:
-                res = db.delete_employee_by_id(employee_id=employee_id)
-                if res:
-                    return jsonify({"success": True, "message": "员工记录已删除"}), 200
-                else:
-                    return jsonify({"success": False, "message": "删除失败"}), 401
+            res = db.search_employee(condition=condition)
+            if res:
+                return jsonify({"success": True, "data": res})
             else:
-                return jsonify({"success": False, "message": "员工不存在"}), 401
+                return jsonify({"success": False, "message": "无数据"})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@employee_bp.route('/delete', methods=['DELETE'])
+def delete_employee_by_id():
+    data = request.get_json()
+    id_list = data.get('ids')
+    print(id_list)
+    try:
+        with EmployeeDB() as db:
+            for employee_id in id_list:
+                print(employee_id)
+                exists = db.employee_exists(employee_id=employee_id)
+                print(exists)
+                if exists:
+                    res = db.delete_employee(employee_id=employee_id)
+                    if not res:
+                        return jsonify({"success": False, "message": "删除失败"}), 401
+            return jsonify({"success": True}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 
-@employee_bp.route('/update/<employee_id>', methods=['PATCH'])
+@employee_bp.route('/update/<employee_id>', methods=['POST'])
 def update_employee(employee_id):
     try:
         with EmployeeDB() as db:
@@ -81,6 +99,7 @@ def update_employee(employee_id):
                     "gender": data.get('gender'),
                     "position": data.get('position')
                 }
+                print(newData)
                 res = db.update_employee(employee_id=employee_id, data=newData)
                 print(f'res: {res}')
                 if res:

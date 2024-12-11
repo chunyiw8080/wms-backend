@@ -7,6 +7,12 @@ from baseDB import DatabaseManager
 
 
 class InventoryDB(DatabaseManager):
+    def show_inventories(self):
+        query = """
+        SELECT * FROM inventory
+        """
+        return self.fetch_query(query)
+
     def show_inventory_count(self, data: dict = None) -> int:
         """此函数计算库存条目总数，不包括已经被标记为删除的条目"""
         params = []

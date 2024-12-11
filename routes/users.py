@@ -1,10 +1,13 @@
 from datetime import datetime
 
+import jwt
 from flask import Blueprint, jsonify, request, session
 from db.userDB import UserDB
 from db.employeeDB import EmployeeDB
 from utils.utils import generate_id, login_required
 from utils.threading_utils import run_in_thread
+from utils.token_authentication import generate_token
+from config.settings import TOKEN_SECRET_KEY
 # 创建蓝图对象
 users_bp = Blueprint('users', __name__, url_prefix='/users')
 
@@ -36,6 +39,20 @@ def list_user_by_id(user_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@users_bp.route('/search', methods=['GET'])
+def search_user():
+    condition = request.args.get('condition')
+    try:
+        with UserDB() as db:
+            res = db.fetch_user_by_id_or_username(condition)
+            if res:
+                print(res)
+                return jsonify({"success": True, "data": [res]})
+            else:
+                return jsonify({'success': False})
+    except Exception as e:
+        return jsonify({'error': str(e)})
+
 
 # 登录验证
 @users_bp.route('/login', methods=['POST'])
@@ -45,13 +62,28 @@ def login():
     hashed_password = data.get('password')
     try:
         with UserDB() as db:
+            token = request.headers.get('Authorization')
+            if token and token.startswith("Bearer "):
+                token = token.split(" ")[1]
+                payload = jwt.decode(token, TOKEN_SECRET_KEY, algorithms=["HS256"])
+                token_id = payload.get('token_id')
+                res = db.verify_token(token_id)
+                if res:
+                    return jsonify({"success": False, "message": 'Invalid token'}), 401
             result = db.login_authentications(username, hashed_password)
+            print(result)
             if not result:
                 return jsonify({"success": False}), 401
             else:
-                session['login'] = True
-                session['username'] = username
-                return jsonify({"success": True}), 200
+                # session['login'] = True
+                # session['username'] = username
+                user_id = result.get('user_id')
+                privilege = result.get('privilege')
+                token = generate_token(user_id, privilege)
+                print(f'token: {token}')
+                # payload = jwt.decode(token, '213wms', algorithms=['HS256'])
+                # print(payload)
+                return jsonify({"success": True, "token": token}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -91,9 +123,9 @@ def create_user():
             }
             res = u_db.create_user(data)
             if res:
-                return jsonify({"success": True, "message": "已成功创建用户"}), 200
+                return jsonify({"success": True}), 200
             else:
-                return jsonify({"success": False, "message": "创建用户失败"}), 401
+                return jsonify({"success": False}), 401
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -111,7 +143,7 @@ def delete_user(user_id):
         return jsonify({'error': str(e)}), 500
 
 
-@users_bp.route('/update/<user_id>', methods=['PATCH'])
+@users_bp.route('/update/<user_id>', methods=['POST'])
 # @run_in_thread
 def update_user(user_id):
     data = request.get_json()
@@ -125,6 +157,7 @@ def update_user(user_id):
                 "status": data.get('status'),
                 "privilege": data.get('privilege')
             }
+            print(newData)
             res = db.update_user(user_id, newData)
             if res:
                 return jsonify({"success": True}), 200
@@ -132,3 +165,23 @@ def update_user(user_id):
                 return jsonify({"success": False}), 401
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@users_bp.route('/logout', methods=['POST'])
+def logout():
+    token = request.headers.get('Authorization')
+    print(token)
+    if token and token.startswith("Bearer "):
+        token = token.split(" ")[1]
+        try:
+            payload = jwt.decode(token, TOKEN_SECRET_KEY, algorithms=["HS256"])
+            token_id = payload.get('token_id')  # 从 payload 中获取 token ID
+            user_id = payload.get('user_id')
+            with UserDB() as db:
+                res = db.destroy_token(token_id=token_id, user_id=user_id)
+                if res:
+                    return jsonify({"success": True, "token_id": token_id, "user_id": user_id})
+                else:
+                    return jsonify({"success": False}), 401
+        except Exception as e:
+            print(e)
+            return jsonify({"error": str(e)})

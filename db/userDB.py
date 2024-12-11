@@ -27,6 +27,14 @@ class UserDB(DatabaseManager):
         params = (user_id,)
         return self.fetch_query(query, params, single=True)
 
+    def fetch_user_by_id_or_username(self, data: str):
+        query = """
+        SELECT * FROM user 
+        WHERE user_id = %s OR username = %s
+        """
+        params = (data, data)
+        return self.fetch_query(query, params, single=True)
+
     def login_authentications(self, username: str, password: str) -> Dict[str, str]:
         """
         :param username: Username received from front-end
@@ -88,11 +96,19 @@ class UserDB(DatabaseManager):
         return result['count'] > 0
 
     def update_user(self, user_id: str, data: Dict[str, str]) -> bool:
-        query = """
-        UPDATE user SET password = %s, status = %s, privilege = %s
-        WHERE user_id = %s
-        """
-        params = tuple(data.values()) + (user_id,)
+        password = data.get('password', None)
+        if password == '':
+            query = """
+            UPDATE user SET status = %s, privilege = %s
+            WHERE user_id = %s
+            """
+            params = (data['status'], data['privilege'], user_id)
+        else:
+            query = """
+            UPDATE user SET password = %s, status = %s, privilege = %s
+            WHERE user_id = %s
+            """
+            params = tuple(data.values()) + (user_id,)
         return self.execute_query(query, params)
 
     def get_user_count(self) -> int:
@@ -101,3 +117,18 @@ class UserDB(DatabaseManager):
         """
         count = self.fetch_query(query, single=True)
         return count['count']
+
+    def destroy_token(self, token_id: str, user_id: str) -> bool:
+        query = """
+        INSERT INTO token_blacklist (token_id, user_id) VALUES (%s, %s)
+        """
+        params = (token_id, user_id, )
+        return self.execute_query(query, params)
+
+    def verify_token(self, token_id: str) -> bool:
+        query = """
+        SELECT * FROM token_blacklist WHERE token_id = %s
+        """
+        params = (token_id, )
+        res = self.fetch_query(query, params, single=True)
+        return True if res is not None else False

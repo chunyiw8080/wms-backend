@@ -26,3 +26,14 @@ class ProviderProjectDB(DatabaseManager):
         params = (value, )
         res = self.fetch_query(query, params, single=True)
         return res['count'] > 0
+
+    def search(self, table_name: str, filed_name: str, value: str):
+        query = f"SELECT * FROM {table_name} WHERE {filed_name} = %s"
+        params = (value,)
+        res = self.fetch_query(query, params, single=True)
+        return res
+
+    def update(self, table_name: str, filed_name: str, value: str, origin_value: str) -> bool:
+        query = f"UPDATE {table_name} SET {filed_name} = %s WHERE {filed_name} = %s"
+        params = (value, origin_value, )
+        return self.execute_query(query, params)
