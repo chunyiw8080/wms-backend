@@ -1,15 +1,19 @@
-from datetime import datetime
-
 import jwt
-from flask import Blueprint, jsonify, request, session
+from datetime import datetime
+from flask import Blueprint, jsonify, request
+
 from db.userDB import UserDB
 from db.employeeDB import EmployeeDB
-from utils.utils import generate_id, login_required
-from utils.threading_utils import run_in_thread
-from utils.token_authentication import generate_token
+from utils.app_logger import get_logger
+from utils.utils import generate_id
+from utils.token_authentication import generate_token, decode_token
 from config.settings import TOKEN_SECRET_KEY
+
+
 # 创建蓝图对象
 users_bp = Blueprint('users', __name__, url_prefix='/users')
+info_logger = get_logger(logger_name='InfoLogger', log_file='app.log')
+error_logger = get_logger(logger_name='ErrorLogger', log_file='error.log')
 
 
 # 返回全部用户
@@ -23,6 +27,7 @@ def list_all_users():
             else:
                 return jsonify({'success': False, 'message': 'No users found'}), 404
     except Exception as e:
+        error_logger.error(f'{request.url} - {str(e)}')
         return jsonify({'error': str(e)}), 500
 
 
@@ -37,7 +42,9 @@ def list_user_by_id(user_id):
             else:
                 return jsonify({"success": False, "message": "用户不存在"})
     except Exception as e:
+        error_logger.error(f'{request.url} - {str(e)}')
         return jsonify({'error': str(e)}), 500
+
 
 @users_bp.route('/search', methods=['GET'])
 def search_user():
@@ -51,6 +58,7 @@ def search_user():
             else:
                 return jsonify({'success': False})
     except Exception as e:
+        error_logger.error(f'{request.url} - {str(e)}')
         return jsonify({'error': str(e)})
 
 
@@ -67,31 +75,31 @@ def login():
                 token = token.split(" ")[1]
                 payload = jwt.decode(token, TOKEN_SECRET_KEY, algorithms=["HS256"])
                 token_id = payload.get('token_id')
+
                 res = db.verify_token(token_id)
                 if res:
                     return jsonify({"success": False, "message": 'Invalid token'}), 401
             result = db.login_authentications(username, hashed_password)
-            print(result)
             if not result:
-                return jsonify({"success": False}), 401
+                return jsonify({"success": False})
             else:
-                # session['login'] = True
-                # session['username'] = username
                 user_id = result.get('user_id')
                 privilege = result.get('privilege')
                 token = generate_token(user_id, privilege)
-                print(f'token: {token}')
-                # payload = jwt.decode(token, '213wms', algorithms=['HS256'])
-                # print(payload)
+
+                info_logger.info(f'用户 {username} 登录;')
                 return jsonify({"success": True, "token": token}), 200
     except Exception as e:
+        error_logger.error(f'{request.url} - {str(e)}')
         return jsonify({'error': str(e)}), 500
 
 
 @users_bp.route('/create', methods=['POST'])
 def create_user():
+    token = request.headers.get('Authorization')
+    _, login_user_id = decode_token(token)
     data = request.get_json()
-    print(data)
+    # print(data)
     employee_name = data.get('employee_name')
     try:
         with EmployeeDB() as e_db:
@@ -123,10 +131,12 @@ def create_user():
             }
             res = u_db.create_user(data)
             if res:
+                info_logger.info(f'用户 {login_user_id} 创建了新用户 {user_id}')
                 return jsonify({"success": True}), 200
             else:
                 return jsonify({"success": False}), 401
     except Exception as e:
+        error_logger.error(f'{request.url} - {str(e)}')
         return jsonify({'error': str(e)}), 500
 
 
@@ -140,12 +150,14 @@ def delete_user(user_id):
             else:
                 return jsonify({"success": False, "message": "该用户不存在"}), 401
     except Exception as e:
+        error_logger.error(f'{request.url} - {str(e)}')
         return jsonify({'error': str(e)}), 500
 
 
 @users_bp.route('/update/<user_id>', methods=['POST'])
-# @run_in_thread
 def update_user(user_id):
+    token = request.headers.get('Authorization')
+    _, login_user_id = decode_token(token)
     data = request.get_json()
     try:
         with UserDB() as db:
@@ -157,14 +169,17 @@ def update_user(user_id):
                 "status": data.get('status'),
                 "privilege": data.get('privilege')
             }
-            print(newData)
+            # print(newData)
             res = db.update_user(user_id, newData)
             if res:
+                info_logger.info(f'用户 {login_user_id} 更新了用户 {user_id} 的信息')
                 return jsonify({"success": True}), 200
             else:
                 return jsonify({"success": False}), 401
     except Exception as e:
+        error_logger.error(f'{request.url} - {str(e)}')
         return jsonify({'error': str(e)}), 500
+
 
 @users_bp.route('/logout', methods=['POST'])
 def logout():
@@ -183,5 +198,5 @@ def logout():
                 else:
                     return jsonify({"success": False}), 401
         except Exception as e:
-            print(e)
+            error_logger.error(f'{request.url} - {str(e)}')
             return jsonify({"error": str(e)})

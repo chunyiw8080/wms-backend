@@ -4,16 +4,16 @@ from weasyprint import HTML
 from io import BytesIO
 from flask import Blueprint, jsonify, request, render_template, send_file
 from db.ordersDB import OrdersDB
-from db.inventoryDB import InventoryDB
 from db.employeeDB import EmployeeDB
+from utils.token_authentication import decode_token
 from utils.utils import generate_id
 from utils.order_utils import get_current_order_count, get_current_inventory_count, calculate_new_price
-from utils.threading_utils import run_in_thread
-from utils.token_authentication import token_required
+from utils.app_logger import get_logger
 
 # 创建蓝图对象
 order_bp = Blueprint('orders', __name__, url_prefix='/orders')
-
+info_logger = get_logger(logger_name='InfoLogger', log_file='app.log')
+error_logger = get_logger(logger_name='ErrorLogger', log_file='error.log')
 key_translation = {
     'order_id': '订单编号',
     'order_type': '订单类型',
@@ -41,6 +41,7 @@ def get_all_orders():
             else:
                 return jsonify({"success": False, "message": "无订单数据"})
     except Exception as e:
+        error_logger.error(f'{request.url} - {str(e)}')
         return jsonify({"error": str(e)})
 
 
@@ -54,6 +55,7 @@ def get_order_pagination(page_number):
             else:
                 return jsonify({"success": False})
     except Exception as e:
+        error_logger.error(f'{request.url} - {str(e)}')
         return jsonify({"error": str(e)})
 
 
@@ -67,6 +69,7 @@ def get_order_count():
             else:
                 return jsonify({"success": False})
     except Exception as e:
+        error_logger.error(f'{request.url} - {str(e)}')
         return jsonify({"error": str(e)})
 
 
@@ -80,6 +83,7 @@ def get_order_by_id(order_id):
             else:
                 return jsonify({"success": False, "message": "订单不存在"})
     except Exception as e:
+        error_logger.error(f'{request.url} - {str(e)}')
         return jsonify({"error": str(e)})
 
 
@@ -87,16 +91,15 @@ def get_order_by_id(order_id):
 def get_order_by_search():
     # 获取url中的查询条件并转为字典
     condition = request.args.to_dict()
-    print(condition)
     try:
         with OrdersDB() as db:
             res = db.search_orders_by_condition(conditions=condition)
-            print("res: ", res)
             if res:
                 return jsonify({"success": True, "data": res})
             else:
                 return jsonify({"success": False})
     except Exception as e:
+        error_logger.error(f'{request.url} - {str(e)}')
         return jsonify({"error": str(e)})
 
 
@@ -121,21 +124,20 @@ def _validate_data(data: Dict[str, str]):
 
         return {"success": True, "cargo_id": cargo_id, "employee_id": employee_id}
     except Exception as e:
+        error_logger.error(f'{request.url} - {str(e)}')
         return {"success": False, "message": str(e)}
 
 
 @order_bp.route('/create', methods=['POST'])
 def create_order():
+    _, login_user_id = decode_token(request.headers.get('Authorization'))
     data = request.get_json()
-    print(f'order data: {data}')
     result = _validate_data(data)
-    print(result)
     if result['success'] is False:
         message = result['message']
         return jsonify({"success": False, "message": message})
     cargo_id = result['cargo_id'].get('cargo_id')
     employee_id = result['employee_id'].get('employee_id')
-    print(f'cargo_id, employee_id : {cargo_id}, {employee_id}')
     try:
         with OrdersDB() as db:
             # 获取当天的订单数量，用于构造订单id
@@ -145,22 +147,6 @@ def create_order():
             formatted_date = current_date.strftime("%Y%m%d")
             # 构造order id: 202411010001
             order_id = formatted_date + generate_id(count)
-
-            """
-            # 判断给定的货品名和型号在inventory表中是否已存在
-            cargo_name = data['cargo_name']
-            model = data['model']
-            cargo_id = db.get_cargo_id_by_cargo_name_model(cargo_name, model)
-            if not cargo_id:
-                return jsonify({"success": False, "message": "库存条目中没有对应的货品名和型号，请先创建库存"})
-
-            employee_name = data['employee_name']
-            with EmployeeDB() as e_db:
-                employee_id = e_db.get_employee_id_by_name(employee_name)
-                print(employee_id.get("employee_id"))
-                if not employee_id:
-                    return jsonify({"success": False, "message": "员工不存在"})
-            """
 
             # 当前日期
             date_string = current_date.strftime("%Y-%m-%d")
@@ -182,36 +168,39 @@ def create_order():
             }
             res = db.create_order(order_info, single=True)
             if res:
+                info_logger.info(f'用户 {login_user_id} 创建了新的出入库条目 {order_id};')
                 return jsonify({"success": True, "message": "订单创建成功"})
             else:
                 return jsonify({"success": False, "message": "订单创建失败"})
     except Exception as e:
+        error_logger.error(f'{request.url} - {str(e)}')
         return jsonify({"error": str(e)})
 
 @order_bp.route('/import', methods=['POST'])
 def batch_create():
     data = request.get_json()
+    _, login_user_id = decode_token(request.headers.get('Authorization'))
     dataset = data['dataset']
     failed_order_ids = []
     try:
         with OrdersDB() as db:
             for item in dataset:
                 res = db.create_order(item)
-                print(res)
-                print(item['order_id'])
                 if not res:
-
                     failed_order_ids.append(item['order_id'])
+            info_logger.info(f'用户 {login_user_id} 执行了批量导入出入库单操作;')
             if failed_order_ids is None:
                 return jsonify({"success": True})
             else:
                 return jsonify({"success": True, "failed_order_ids": failed_order_ids})
     except Exception as e:
+        error_logger.error(f'{request.url} - {str(e)}')
         return jsonify({"success": False, "error": str(e)})
 
 
 @order_bp.route('/update/<order_id>', methods=['POST'])
 def update_order(order_id):
+    _, login_user_id = decode_token(request.headers.get('Authorization'))
     try:
         with OrdersDB() as o_db:
             exists = o_db.order_exists(order_id)
@@ -252,6 +241,7 @@ def update_order(order_id):
                 # 更新订单状态
                 res2 = o_db.update_order_by_id(order_id=order_id, status=data['status'])
                 if res1 and res2:
+                    info_logger.info(f'用户 {login_user_id} 修改了订单 {order_id} 的状态为 确认;')
                     return jsonify({"success": True, "message": "订单已确认"})
                 else:
                     return jsonify({"success": False, "message": "订单状态更新失败"})
@@ -259,6 +249,7 @@ def update_order(order_id):
             if currentStatus == 'waiting' and data['status'] == 'reject':
                 res = o_db.update_order_by_id(order_id=order_id, status=data['status'])
                 if res:
+                    info_logger.info(f'用户 {login_user_id} 修改了订单 {order_id} 的状态为 取消;')
                     return jsonify({"success": True, "message": "订单已被取消"})
                 else:
                     return jsonify({"success": False, "message": "订单状态更新失败"})
@@ -266,25 +257,30 @@ def update_order(order_id):
             if currentStatus == 'pass' or currentStatus == 'reject':
                 return jsonify({"success": False, "message": "不被允许的操作"})
     except Exception as e:
+        error_logger.error(f'{request.url} - {str(e)}')
         return jsonify({"error": str(e)})
 
 @order_bp.route('/print/<order_id>', methods=['GET'])
-@token_required
 def print_order(order_id):
+    _, login_user_id = decode_token(request.headers.get('Authorization'))
     # Linux上安装依赖库
     # sudo apt update
     # sudo apt install -y libgobject-2.0-0 libcairo2 libpango-1.0-0 gir1.2-pango-1.0 gir1.2-gtk-3.0
-    with OrdersDB() as o_db:
-        order_data = o_db.print_orders(order_id)
-        if order_data is not None:
-            now_date = datetime.now().strftime("%Y-%m-%d")
-            rendered_html = render_template('print-receipt.html', data=order_data, now_date=now_date)
+    try:
+        with OrdersDB() as o_db:
+            order_data = o_db.print_orders(order_id)
+            if order_data is not None:
+                now_date = datetime.now().strftime("%Y-%m-%d")
+                rendered_html = render_template('print-receipt.html', data=order_data, now_date=now_date)
 
-            pdf_stream = BytesIO()  # 使用内存缓冲区存储 PDF
-            HTML(string=rendered_html).write_pdf(pdf_stream)
-            pdf_stream.seek(0)
-
-            return send_file(pdf_stream, as_attachment=True, download_name=f"出入库单-{order_id}.pdf", mimetype="application/pdf")
-        else:
-            return jsonify({"success": False})
+                pdf_stream = BytesIO()  # 使用内存缓冲区存储 PDF
+                HTML(string=rendered_html).write_pdf(pdf_stream)
+                pdf_stream.seek(0)
+                info_logger.info(f'用户 {login_user_id} 打印了订单 {order_id};')
+                return send_file(pdf_stream, as_attachment=True, download_name=f"出入库单-{order_id}.pdf", mimetype="application/pdf")
+            else:
+                return jsonify({"success": False})
+    except Exception as e:
+        error_logger.error(f'{request.url} - {str(e)}')
+        return jsonify({"error": str(e)})
 

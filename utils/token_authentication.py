@@ -1,13 +1,19 @@
 from functools import wraps
 
 import jwt, uuid, datetime
-from flask import jsonify, request
+from flask import jsonify, request, json
 from pytz import timezone
 from config.settings import TOKEN_SECRET_KEY
 from db.userDB import UserDB
 
 
 def generate_token(user_id, permissions):
+    """
+    登录时利用读取的用户id和权限代码生成JWT Token
+    :param user_id: 用户id
+    :param permissions: 权限代码
+    :return: Token
+    """
     china_timezone = timezone('Asia/Shanghai')
     now = datetime.datetime.now(china_timezone)
     payload = {
@@ -19,7 +25,12 @@ def generate_token(user_id, permissions):
     }
     return jwt.encode(payload, TOKEN_SECRET_KEY, algorithm='HS256')
 
+
 def token_required(f):
+    """
+    装饰器，用于验证token是否有效
+    :param f: 被装饰的函数
+    """
     @wraps(f)
     def decorated(*args, **kwargs):
         token = request.headers.get('Authorization')
@@ -56,15 +67,31 @@ def token_required(f):
 
     return decorated
 
-def verify_token(payload):
+
+def verify_token(payload) -> bool:
+    """
+    Token验证函数：读取数据库中token_blacklist表，检查是否有匹配的废弃Token
+    :param payload: Token Payload
+    :return: True or False
+    """
     token_id = payload.get('token_id')
     try:
         with UserDB() as db:
             res = db.verify_token(token_id)
             return res
     except Exception as e:
-        return jsonify({
-            "success": False,
-            "message": str(e)
-        })
+        return False
 
+
+def decode_token(token) -> tuple:
+    """
+    解码Token
+    :param token: Token from request.headers
+    :return: Token中的token_id和user_id，返回元组
+    """
+    if token and token.startswith("Bearer "):
+        token = token.split(" ")[1]
+        payload = jwt.decode(token, TOKEN_SECRET_KEY, algorithms=["HS256"])
+        token_id = payload.get('token_id')
+        user_id = payload.get('user_id')
+        return token_id, user_id

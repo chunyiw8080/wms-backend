@@ -16,16 +16,5 @@ def generate_id(count: int) -> str:
     return f"{numeric_part}"
 
 
-def login_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        # 检查 session 中的 'login' 是否存在，且为 True
-        if not session.get('login'):  # 如果没有 'login' 或其值为 False
-            # 返回 401 状态码表示未授权
-            return jsonify({'error': 'Unauthorized, please login first'}), 401
-        return f(*args, **kwargs)  # 如果用户已登录，继续执行原函数
-    return decorated_function
-
-
 
 
