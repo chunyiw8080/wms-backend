@@ -1,7 +1,6 @@
 import os
 import sys
 from typing import Dict
-
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from baseDB import DatabaseManager
 
@@ -47,17 +46,15 @@ class HistoryDB(DatabaseManager):
         failed = 0
         succeed = 0
         query = """
-        INSERT INTO history(id, year, month, cargo_name, model, categories, starting_price, starting_count, starting_total_price, closing_price, closing_count, closing_total_price)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        INSERT INTO history(id, year, month, cargo_name, model, specification, categories, starting_price, starting_count, starting_total_price, closing_price, closing_count, closing_total_price)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         for record in data:
             params = tuple(record.values())
             record_id = self.get_record_id(params)
-            print(f'record_id: {record_id}')
             params_list = list(params)
             params_list.insert(0, record_id)
             new_params = tuple(params_list)
-            print(f'params: {new_params}')
             res = self.execute_query(query, new_params)
             if not res:
                 failed += 1
@@ -84,4 +81,3 @@ class HistoryDB(DatabaseManager):
                 month = f'0{month}'
             record_id = f'{year}{month}{cargo_id}'
             return record_id
-

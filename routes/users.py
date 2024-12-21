@@ -9,9 +9,9 @@ from utils.utils import generate_id
 from utils.token_authentication import generate_token, decode_token
 from config.settings import TOKEN_SECRET_KEY
 
-
 # 创建蓝图对象
 users_bp = Blueprint('users', __name__, url_prefix='/users')
+
 info_logger = get_logger(logger_name='InfoLogger', log_file='app.log')
 error_logger = get_logger(logger_name='ErrorLogger', log_file='error.log')
 
@@ -123,7 +123,7 @@ def create_user():
             data = {
                 'user_id': user_id,
                 'username': data.get('username'),
-                'password': data.get('password'),
+                'password':  data.get('password'),
                 'employee_id': employee_id,
                 'created_at': datetime.now().date(),
                 'status': data.get('status'),

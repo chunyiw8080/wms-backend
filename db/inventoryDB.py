@@ -1,7 +1,6 @@
 import os
 import sys
 from typing import Dict, List
-
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from baseDB import DatabaseManager
 
@@ -42,14 +41,14 @@ class InventoryDB(DatabaseManager):
         offset = (page - 1) * per_page
         if category:
             query = """
-            SELECT cargo_id, cargo_name, model, categories, count, price, deleted, count * price as total_price FROM inventory
+            SELECT cargo_id, cargo_name, model, categories, count, price, specification, deleted, count * price as total_price FROM inventory
             WHERE deleted IS FALSE AND categories = %s
             LIMIT %s OFFSET %s
             """
             params = (category, per_page, offset)
         else:
             query = """
-            SELECT cargo_id, cargo_name, model, categories, count, price, deleted, count * price as total_price FROM inventory
+            SELECT cargo_id, cargo_name, model, categories, count, price, specification, deleted, count * price as total_price FROM inventory
             WHERE deleted IS FALSE
             LIMIT %s OFFSET %s
             """
@@ -59,13 +58,13 @@ class InventoryDB(DatabaseManager):
     def get_all_inventories(self, category: str = None) -> List[Dict]:
         if category:
             query = """
-            SELECT cargo_id, cargo_name, model, categories, count, price, deleted, count * price as total_price FROM inventory
+            SELECT cargo_id, cargo_name, model, categories, count, price, specification, deleted, count * price as total_price FROM inventory
             WHERE deleted IS FALSE AND categories = %s
             """
             params = (category, )
         else:
             query = """
-            SELECT cargo_id, cargo_name, model, categories, count, price, deleted, count * price as total_price FROM inventory
+            SELECT cargo_id, cargo_name, model, categories, count, price, specification, deleted, count * price as total_price FROM inventory
             WHERE deleted IS FALSE
             """
             params = ()
@@ -74,7 +73,7 @@ class InventoryDB(DatabaseManager):
     def get_inventory_by_id(self, cargo_id):
         """基于id获取库存条目信息"""
         query = """
-        SELECT cargo_id, cargo_name, model, categories, count, price, count * price as total_price FROM inventory
+        SELECT cargo_id, cargo_name, model, categories, count, price, specification, count * price as total_price FROM inventory
         WHERE cargo_id = %s
         """
         params = (cargo_id,)
@@ -85,7 +84,7 @@ class InventoryDB(DatabaseManager):
         params = []
         conditions = []
         base_query = """
-        SELECT cargo_id, cargo_name, model, categories, count, price, count * price as total_price FROM inventory
+        SELECT cargo_id, cargo_name, model, categories, count, price, specification, count * price as total_price FROM inventory
         """
         # 动态生成查询条件
         if data.get('cargo_name'):
@@ -113,22 +112,22 @@ class InventoryDB(DatabaseManager):
     def create_inventory(self, inventory_info: Dict[str, str]) -> bool:
         """创建库存条目数据 - deleted字段在数据库中设置的默认值为False(0)，因此没有在这里设置"""
         query = """
-        INSERT INTO inventory (cargo_id, cargo_name, model, categories, count, price)
-        VALUES (%s, %s, %s, %s, %s, %s)
+        INSERT INTO inventory (cargo_id, cargo_name, model, categories, count, price, specification)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
         """
         params = (
             inventory_info['cargo_id'], inventory_info['cargo_name'], inventory_info['model'],
             inventory_info['categories'], inventory_info['count'],
-            inventory_info['price'])
+            inventory_info['price'], inventory_info['specification'])
         result = self.execute_query(query, params)
         return result
 
     def update_inventory(self, data: Dict[str, str]) -> bool:
         query = """
-        UPDATE inventory SET cargo_name = %s, model = %s, categories = %s
+        UPDATE inventory SET cargo_name = %s, model = %s, categories = %s, specification = %s
         WHERE cargo_id = %s
         """
-        params = (data['cargo_name'], data['model'], data['categories'], data['cargo_id'])
+        params = (data['cargo_name'], data['model'], data['categories'], data['specification'],data['cargo_id'])
         result = self.execute_query(query, params)
         return result
 
@@ -153,7 +152,7 @@ class InventoryDB(DatabaseManager):
         # 创建占位符数量等于 cargo_ids 数量的 SQL 查询
         placeholders = ', '.join(['%s'] * len(cargo_ids))
         query = f"""
-            SELECT cargo_id, cargo_name, model, categories, count, price, total_price
+            SELECT cargo_id, cargo_name, model, categories, count, price, specification, total_price
             FROM inventory
             WHERE cargo_id IN ({placeholders})
         """
@@ -178,7 +177,7 @@ class InventoryDB(DatabaseManager):
 
     def search_by_category(self, category: str) -> bool:
         query = """
-        SELECT cargo_id, cargo_name, model, categories, count, price, count * price as total_price FROM inventory
+        SELECT cargo_id, cargo_name, model, categories, count, price, specification, count * price as total_price FROM inventory
         WHERE categories = %s AND deleted IS FALSE
         """
         params = (category,)

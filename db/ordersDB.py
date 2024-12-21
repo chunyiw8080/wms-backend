@@ -2,7 +2,6 @@ import os
 import sys
 from decimal import Decimal
 from typing import Dict
-
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from baseDB import DatabaseManager
 
@@ -10,7 +9,7 @@ from baseDB import DatabaseManager
 class OrdersDB(DatabaseManager):
     def list_orders(self, order_id: str = None) -> Dict[str, str]:
         query = """
-        SELECT * FROM orders
+        SELECT *, price * count as total_price FROM orders
         """
         if order_id:
             query += " WHERE orders.order_id = %s"
@@ -35,7 +34,9 @@ class OrdersDB(DatabaseManager):
             e.employee_name, 
             o.published_at, 
             o.processed_at, 
-            o.count
+            o.count,
+            i.specification,
+            o.price * o.count as total_price
         FROM 
             orders o
         JOIN 
@@ -62,7 +63,9 @@ class OrdersDB(DatabaseManager):
             e.employee_name, 
             o.published_at, 
             o.processed_at, 
-            o.count
+            o.count,
+            i.specification,
+            o.price * o.count as total_price
         FROM 
             orders o
         JOIN 
@@ -99,7 +102,9 @@ class OrdersDB(DatabaseManager):
                e.employee_name, 
                o.published_at, 
                o.processed_at, 
-               o.count
+               o.count,
+               i.specification,
+               o.price * o.count as total_price
            FROM 
                orders o
            JOIN 
@@ -127,7 +132,6 @@ class OrdersDB(DatabaseManager):
     def create_order(self, data: Dict, single: bool = False) -> bool:
         exists = self.order_exists(data['order_id'])
         if exists:
-            print("Order already exists")
             return False
         else:
             query = """
@@ -135,13 +139,15 @@ class OrdersDB(DatabaseManager):
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
             if single is False:
-                employee_id = self.get_employee_id_by_name(data['employee_name'])
+                query_res = self.get_employee_id_by_name(data['employee_name'])
+                employee_id = query_res.get('employee_id')
             else:
                 employee_id = data['employee_id']
             params = (
                 data['order_id'], data['order_type'], data['cargo_id'], data['price'], data['provider'], data['project'],
                 data['status'], employee_id, data['published_at'], data['processed_at'], data['count']
             )
+            print(params)
             res = self.execute_query(query, params)
             return res
 
@@ -194,6 +200,7 @@ class OrdersDB(DatabaseManager):
         """
         params = (order_id,)
         result = self.fetch_query(query, params, single=True)
+        print(result)
         return result['count'] > 0
 
     def update_inventory(self, order_id: str, amount: int, price: Decimal = None) -> bool:
@@ -234,7 +241,9 @@ class OrdersDB(DatabaseManager):
                e.employee_name, 
                o.published_at, 
                o.processed_at, 
-               o.count
+               o.count,
+               i.specification,
+               o.price * o.count as total_price
            FROM 
                orders o
            JOIN 

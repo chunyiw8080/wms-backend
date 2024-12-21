@@ -6,6 +6,7 @@ from utils.app_logger import get_logger
 
 # 创建蓝图对象
 employee_bp = Blueprint('employees', __name__, url_prefix='/employees')
+
 info_logger = get_logger(logger_name='InfoLogger', log_file='app.log')
 error_logger = get_logger(logger_name='ErrorLogger', log_file='error.log')
 

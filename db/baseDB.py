@@ -1,9 +1,10 @@
+import pymysql
+
 from typing import Dict, Any, List
 from utils.app_logger import get_logger
-import pymysql
-from config.settings import DB_HOST, DB_USER, DB_PASSWORD, DB_NAME
+from config.settings import DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, DB_PORT
 
-logger = get_logger(log_file='error.log')
+error_logger = get_logger(logger_name='ErrorLogger', log_file='error.log')
 
 class DatabaseManager():
     def __init__(self):
@@ -22,13 +23,14 @@ class DatabaseManager():
                 self.connection = pymysql.connect(
                     host=DB_HOST,
                     user=DB_USER,
+                    port=DB_PORT,
                     password=DB_PASSWORD,
                     database=DB_NAME,
                     cursorclass=pymysql.cursors.DictCursor
                 )
                 # print('Connection established')
             except Exception as e:
-                logger.error(f'数据库连接错误, {e}')
+                error_logger.error(f'数据库连接错误, {e}')
         return self.connection
 
     def fetch_query(self, query, params=None, single=False) -> Dict[str, Any] or List[Dict[str, Any]] or None:
@@ -42,7 +44,7 @@ class DatabaseManager():
                     else:
                         result = cursor.fetchall()
             except Exception as e:
-                logger.error(f'查询错误, {e}')
+                error_logger.error(f'查询错误, {e}')
         return result
 
     def execute_query(self, query, params=None) -> bool or None:
@@ -53,11 +55,11 @@ class DatabaseManager():
                     self.connection.commit()
                     return True
             except Exception as e:
-                logger.error(f'执行异常, {e}')
+                error_logger.error(f'执行异常, {e}')
                 self.connection.rollback()
                 return None
         else:
-            logger.error(f'没有建立数据库连接')
+            error_logger.error(f'没有建立数据库连接')
         return None
 
     def close_connection(self):

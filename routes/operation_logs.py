@@ -1,8 +1,8 @@
 import os
-from utils.app_logger import get_logger
 from flask import Blueprint, jsonify, request
+from utils.app_logger import get_logger
 
-# info_logger = get_logger(logger_name='InfoLogger', log_file='app.log')
+
 error_logger = get_logger(logger_name='ErrorLogger', log_file='error.log')
 logs_bp = Blueprint('logs', __name__, url_prefix='/logs')
 

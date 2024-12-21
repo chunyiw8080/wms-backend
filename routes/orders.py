@@ -3,6 +3,7 @@ from typing import Dict
 from weasyprint import HTML
 from io import BytesIO
 from flask import Blueprint, jsonify, request, render_template, send_file
+
 from db.ordersDB import OrdersDB
 from db.employeeDB import EmployeeDB
 from utils.token_authentication import decode_token
@@ -12,8 +13,10 @@ from utils.app_logger import get_logger
 
 # 创建蓝图对象
 order_bp = Blueprint('orders', __name__, url_prefix='/orders')
+
 info_logger = get_logger(logger_name='InfoLogger', log_file='app.log')
 error_logger = get_logger(logger_name='ErrorLogger', log_file='error.log')
+
 key_translation = {
     'order_id': '订单编号',
     'order_type': '订单类型',
@@ -94,6 +97,7 @@ def get_order_by_search():
     try:
         with OrdersDB() as db:
             res = db.search_orders_by_condition(conditions=condition)
+            print(res)
             if res:
                 return jsonify({"success": True, "data": res})
             else:
@@ -101,6 +105,22 @@ def get_order_by_search():
     except Exception as e:
         error_logger.error(f'{request.url} - {str(e)}')
         return jsonify({"error": str(e)})
+
+
+@order_bp.route('/batch_query', methods=['POST'])
+def order_batch_query():
+    data = request.get_json()
+    ids = data.get("ids")
+    query_res = []
+    with OrdersDB() as db:
+        for id in ids:
+            res = db.search_orders_by_condition(order_id=id)
+            if res:
+                query_res.append(res)
+    if len(query_res) != 0:
+        return jsonify({"success": True, "data": query_res})
+    else:
+        return jsonify({"success": False})
 
 
 def _validate_data(data: Dict[str, str]):
@@ -128,10 +148,21 @@ def _validate_data(data: Dict[str, str]):
         return {"success": False, "message": str(e)}
 
 
+def generate_order_id(db: OrdersDB):
+    count = db.get_today_order_count()
+    # 获取当天日期的str类型
+    current_date = datetime.now()
+    formatted_date = current_date.strftime("%Y%m%d")
+    # 构造order id: 202411010001
+    order_id = formatted_date + generate_id(count)
+    return order_id
+
+
 @order_bp.route('/create', methods=['POST'])
 def create_order():
     _, login_user_id = decode_token(request.headers.get('Authorization'))
     data = request.get_json()
+    print(data)
     result = _validate_data(data)
     if result['success'] is False:
         message = result['message']
@@ -166,6 +197,7 @@ def create_order():
                 "processed_at": datetime(1970, 1, 1).strftime("%Y-%m-%d"),
                 "count": data['count'],
             }
+            print(order_info)
             res = db.create_order(order_info, single=True)
             if res:
                 info_logger.info(f'用户 {login_user_id} 创建了新的出入库条目 {order_id};')
@@ -176,21 +208,28 @@ def create_order():
         error_logger.error(f'{request.url} - {str(e)}')
         return jsonify({"error": str(e)})
 
+
 @order_bp.route('/import', methods=['POST'])
 def batch_create():
+    print(123)
     data = request.get_json()
+    print(data)
     _, login_user_id = decode_token(request.headers.get('Authorization'))
     dataset = data['dataset']
     failed_order_ids = []
     try:
         with OrdersDB() as db:
             for item in dataset:
+                order_type = 'inbound' if item['order_type'] == '入库' else 'outbound'
+                item['order_type'] = order_type
+                status = 'pass' if item['status'] == '完成' else 'waiting' if item['status'] == '待确认' else 'reject'
+                item['status'] = status
                 res = db.create_order(item)
                 if not res:
                     failed_order_ids.append(item['order_id'])
             info_logger.info(f'用户 {login_user_id} 执行了批量导入出入库单操作;')
             if failed_order_ids is None:
-                return jsonify({"success": True})
+                return jsonify({"success": True, "failed_order_ids": ""})
             else:
                 return jsonify({"success": True, "failed_order_ids": failed_order_ids})
     except Exception as e:
@@ -260,6 +299,7 @@ def update_order(order_id):
         error_logger.error(f'{request.url} - {str(e)}')
         return jsonify({"error": str(e)})
 
+
 @order_bp.route('/print/<order_id>', methods=['GET'])
 def print_order(order_id):
     _, login_user_id = decode_token(request.headers.get('Authorization'))
@@ -277,10 +317,10 @@ def print_order(order_id):
                 HTML(string=rendered_html).write_pdf(pdf_stream)
                 pdf_stream.seek(0)
                 info_logger.info(f'用户 {login_user_id} 打印了订单 {order_id};')
-                return send_file(pdf_stream, as_attachment=True, download_name=f"出入库单-{order_id}.pdf", mimetype="application/pdf")
+                return send_file(pdf_stream, as_attachment=True, download_name=f"出入库单-{order_id}.pdf",
+                                 mimetype="application/pdf")
             else:
                 return jsonify({"success": False})
     except Exception as e:
         error_logger.error(f'{request.url} - {str(e)}')
         return jsonify({"error": str(e)})
-

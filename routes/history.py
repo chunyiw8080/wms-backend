@@ -4,6 +4,7 @@ from utils.token_authentication import decode_token
 from utils.app_logger import get_logger
 
 history_bp = Blueprint('history', __name__, url_prefix='/history')
+
 info_logger = get_logger(logger_name='InfoLogger', log_file='app.log')
 error_logger = get_logger(logger_name='ErrorLogger', log_file='error.log')
 
@@ -29,10 +30,12 @@ def search_history_by_date():
 def bacth_insert():
     _, login_user_id = decode_token(request.headers.get('Authorization'))
     data = request.get_json()
+    print(data)
     dataset = data.get("dataset")
     try:
         with HistoryDB() as db:
             res, succeed, failed = db.import_record(dataset)
+            print(res)
             if res:
                 info_logger.info(f'用户 {login_user_id} 批量导入了历史数据;')
             return jsonify({'success': res, 'succeed': succeed, 'failed': failed})

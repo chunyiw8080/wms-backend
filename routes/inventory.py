@@ -1,5 +1,3 @@
-from decimal import Decimal
-
 from flask import Blueprint, jsonify, request
 from utils.app_logger import get_logger
 from utils.token_authentication import decode_token
@@ -7,8 +5,10 @@ from db.inventoryDB import InventoryDB
 from utils.utils import generate_id
 
 inventory_bp = Blueprint('inventories', __name__, url_prefix='/inventory')
+
 info_logger = get_logger(logger_name='InfoLogger', log_file='app.log')
 error_logger = get_logger(logger_name='ErrorLogger', log_file='error.log')
+
 
 @inventory_bp.route('/count', methods=['GET'])
 def get_data_count():
@@ -26,8 +26,7 @@ def get_data_count():
                     "model": model
                 }
                 count = db.show_inventory_count(data)
-                print(f'get count: {count}')
-            return jsonify({"success": True, "count": count}) if count != 0 else jsonify({"success": False})
+            return jsonify({"success": True, "count": count})
     except Exception as e:
         error_logger.error(f'{request.url} - {str(e)}')
         return jsonify({"error": str(e)})
@@ -85,6 +84,7 @@ def get_inventory_by_id(cargo_id):
 @inventory_bp.route('/create', methods=['POST'])
 def create_inventory():
     data = request.get_json()
+    print(f'data: {data}')
     _, login_user_id = decode_token(request.headers.get('Authorization'))
     try:
         with InventoryDB() as db:
@@ -102,7 +102,8 @@ def create_inventory():
                     "model": model,
                     "categories": data.get("categories"),
                     "count": int(data.get("count")),
-                    "price": float(data.get('price'))
+                    "price": float(data.get('price')),
+                    "specification": data.get('specification'),
                 }
                 res = db.create_inventory(inventory_info=newData)
                 if res:
@@ -121,6 +122,7 @@ def import_inventory():
         _, login_user_id = decode_token(request.headers.get('Authorization'))
         data = request.get_json()
         dataset = data['dataset']
+        print('dataset: ', dataset)
         length = len(data['dataset'])
         skipped, imported = 0, 0
         skipped_row = []
@@ -172,9 +174,9 @@ def get_categories():
             categories = db.get_categories()
             print(categories)
             if categories:
-                return jsonify({"success": True, "categories": categories}), 200
+                return jsonify({"success": True, "categories": categories})
             else:
-                return jsonify({"success": False, "message": "没有分类数据"}), 401
+                return jsonify({"success": False, "message": "没有分类数据"})
     except Exception as e:
         error_logger.error(f'{request.url} - {str(e)}')
         return jsonify({"error": str(e)}), 500

@@ -1,7 +1,7 @@
 from functools import wraps
 
 import jwt, uuid, datetime
-from flask import jsonify, request, json
+from flask import jsonify, request
 from pytz import timezone
 from config.settings import TOKEN_SECRET_KEY
 from db.userDB import UserDB

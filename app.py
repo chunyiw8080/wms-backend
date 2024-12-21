@@ -1,4 +1,3 @@
-
 import jwt
 from flask import Flask, request, jsonify
 
@@ -11,7 +10,6 @@ from routes.providers import provider_bp
 from routes.project import project_bp
 from routes.history import history_bp
 from routes.operation_logs import logs_bp
-from task import start_scheduler_in_thread
 
 from utils.token_authentication import verify_token
 from utils.app_logger import get_logger
@@ -28,6 +26,7 @@ app.register_blueprint(history_bp)
 app.register_blueprint(logs_bp)
 
 access_logger = get_logger(logger_name='AccessLogger', log_file='access.log')
+
 
 @app.before_request
 def global_token_verification():
@@ -46,8 +45,8 @@ def global_token_verification():
     if not token or not token.startswith("Bearer "):
         return jsonify({
             "success": False,
-            "message": "Token is missing or improperly formatted."
-        }), 401
+            "message": "403 Forbidden"
+        }), 403
     token = token.split(" ")[1]
 
     try:
@@ -57,18 +56,19 @@ def global_token_verification():
         if verify_token(payload):
             return jsonify({
                 "success": False,
-                "message": "Token is Invalid."
-            }), 401
+                "message": "Invalid Token."
+            }), 403
     except jwt.ExpiredSignatureError:
         return jsonify({
             "success": False,
-            "message": "Token has expired. Please log in again."
-        }), 401
+            "message": "Token expired."
+        }), 403
     except jwt.InvalidTokenError:
         return jsonify({
             "success": False,
-            "message": "Invalid token. Please log in again."
-        }), 401
+            "message": "Invalid token."
+        }), 403
+
 
 @app.after_request
 def log_response_info(response):
@@ -95,5 +95,4 @@ def log_response_info(response):
 
 
 if __name__ == '__main__':
-    start_scheduler_in_thread()
-    app.run(debug=True)
+    app.run(debug=False)
