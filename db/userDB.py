@@ -97,8 +97,8 @@ class UserDB(DatabaseManager):
         return result['count'] > 0
 
     def update_user(self, user_id: str, data: Dict[str, str]) -> bool:
-        password = data.get('password', None)
-        if password == '':
+        password = data.get('password')
+        if password is None:
             query = """
             UPDATE user SET status = %s, privilege = %s
             WHERE user_id = %s
@@ -110,6 +110,7 @@ class UserDB(DatabaseManager):
             WHERE user_id = %s
             """
             params = tuple(data.values()) + (user_id,)
+        print(query)
         return self.execute_query(query, params)
 
     def get_user_count(self) -> int:

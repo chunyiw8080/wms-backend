@@ -1,1 +1,6 @@
-2024-12-20 13:40:32,411 - ERROR - 查询错误, (2013, 'Lost connection to MySQL server during query')
+2024-12-23 12:56:51,820 - ERROR - 执行异常, (1048, "Column 'password' cannot be null")
+2024-12-23 12:57:37,850 - ERROR - 执行异常, (1048, "Column 'password' cannot be null")
+2024-12-23 12:59:53,748 - ERROR - 执行异常, (1048, "Column 'password' cannot be null")
+2024-12-23 13:00:10,692 - ERROR - 执行异常, (1048, "Column 'password' cannot be null")
+2024-12-23 13:01:14,434 - ERROR - 执行异常, (1048, "Column 'password' cannot be null")
+2024-12-23 13:01:46,676 - ERROR - 执行异常, (1048, "Column 'password' cannot be null")

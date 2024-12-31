@@ -157,6 +157,7 @@ def delete_user(user_id):
 @users_bp.route('/update/<user_id>', methods=['POST'])
 def update_user(user_id):
     token = request.headers.get('Authorization')
+    print(token)
     _, login_user_id = decode_token(token)
     data = request.get_json()
     try:
@@ -165,11 +166,11 @@ def update_user(user_id):
             if not exists:
                 return jsonify({"success": False, "message": "用户不存在"})
             newData = {
-                "password": data.get('password'),
+                "password": data.get('password') if data.get('password') else None,
                 "status": data.get('status'),
                 "privilege": data.get('privilege')
             }
-            # print(newData)
+            print(newData)
             res = db.update_user(user_id, newData)
             if res:
                 info_logger.info(f'用户 {login_user_id} 更新了用户 {user_id} 的信息')
