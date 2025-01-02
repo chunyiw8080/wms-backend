@@ -10,6 +10,6 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV CONTAINER_PORT=${CONTAINER_PORT}
 EXPOSE 8000
-CMD ["gunicorn", "app:app", "--workers", "2", "--bind", "0.0.0.0:${CONTAINER_PORT}"]
+ENTRYPOINT ["sh", "-c", "gunicorn app:app --workers 2 --bind 0.0.0.0:${CONTAINER_PORT}"]
 
 # 运行：docker build -t chunyiwang/wms-backend:1 -f ./Dockerfile .
