@@ -5,7 +5,5 @@ set -u
 : "$CONTAINER_REGISTRY"
 : "$VERSION"
 : "$REGISTRY_NAMESPACE"
-: "$CONTAINER_PORT"
 
-echo "Container port: $CONTAINER_PORT"
-docker build -t "$CONTAINER_REGISTRY"/"$REGISTRY_NAMESPACE"/wms-backend:"$VERSION" --build-arg CONTAINER_PORT="$CONTAINER_PORT" --file ./deployment/Dockerfile .
+docker build -t "$CONTAINER_REGISTRY"/"$REGISTRY_NAMESPACE"/wms-backend:"$VERSION" --file ./deployment/Dockerfile .
