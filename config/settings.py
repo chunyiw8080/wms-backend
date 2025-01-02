@@ -1,7 +1,9 @@
-DB_HOST = '182.92.242.105'
-DB_USER = 'wms'
-DB_PASSWORD = 'Wcy199545..'
-DB_NAME = 'wms'
-DB_PORT = 3308
+import os
 
-TOKEN_SECRET_KEY = '213wms'
+DB_HOST = os.getenv('DB_HOST', 'default_host')
+DB_USER = os.getenv('DB_USER', 'default_user')
+DB_PASSWORD = os.getenv('DB_PASSWORD', 'default_password')
+DB_NAME = os.getenv('DB_NAME', 'default_db')
+DB_PORT = os.getenv('DB_PORT', 3306)
+
+TOKEN_SECRET_KEY = os.getenv('TOKEN_SECRET_KEY', 'default_token')

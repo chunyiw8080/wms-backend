@@ -1,0 +1,40 @@
+name: deploy wms backend program by using docker container
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      VERSION: ${{ github.sha }}
+      CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
+      REGISTRY_UN: ${{ secrets.REGISTRY_UN }}
+      REGISTRY_PW: ${{ secrets.REGISTRY_PW  }}
+      CONTAINER_NAME: ${{ vars.CONTAINER_NAME }}
+      EXPOSED_PORT: ${{ vars.EXPOSED_PORT }}
+      CONTAINER_PORT: ${{ vars.CONTAINER_PORT }}
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: build image
+        run: bash ./scripts/build-images.sh
+
+      - name: push image
+        run: bash ./scripts/push-image.sh
+
+      - name: setup ssh private key
+        uses: webfactory/ssh-agent@v0.5.3
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: run docker container
+        run: |
+          bash ./scripts/run-container.sh
+        env:
+          VERSION: ${{ env.VERSION }}
+          CONTAINER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
+          CONTAINER_NAME: ${{ env.CONTAINER_NAME }}
+          EXPOSED_PORT: ${{ env.EXPOSED_PORT }}
+          CONTAINER_PORT: ${{ env.CONTAINER_PORT }}
