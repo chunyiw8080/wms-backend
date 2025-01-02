@@ -20,7 +20,7 @@ if [ $? -ne 0 ]; then
     echo "Failed to pull docker image to the server"
     exit 1
 fi
-sudo docker run -d --name "$CONTAINER_NAME" -p "$EXPOSED_PORT":8000 "$CONTAINER_REGISTRY"/"$REGISTRY_NAMESPACE"/wms-backend:"$VERSION"
+sudo docker run -d --name "$CONTAINER_NAME" -p "$EXPOSED_PORT":8000  --network bridge "$CONTAINER_REGISTRY"/"$REGISTRY_NAMESPACE"/wms-backend:"$VERSION"
 if [ $? -ne 0 ]; then
     echo "Failed to run docker container"
     exit 1
