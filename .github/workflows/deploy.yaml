@@ -12,6 +12,7 @@ jobs:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
       REGISTRY_UN: ${{ secrets.REGISTRY_UN }}
       REGISTRY_PW: ${{ secrets.REGISTRY_PW  }}
+      REGISTRY_NAMESPACE: ${{ secrets.REGISTRY_NAMESPACE }}
 
       DB_HOST: ${{ secrets.DB_HOST }}
       DB_USER: ${{ secrets.DB_USER }}
@@ -30,7 +31,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: build image
-        run: bash ./scripts/build-images.sh
+        run: bash ./scripts/build-image.sh
 
       - name: push image
         run: bash ./scripts/push-image.sh
