@@ -30,7 +30,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: build image
-        run: bash ./scripts/build-images.sh
+        run: bash ./scripts/build-image.sh
 
       - name: push image
         run: bash ./scripts/push-image.sh
