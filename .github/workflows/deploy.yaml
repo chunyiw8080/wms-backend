@@ -1,4 +1,4 @@
-name: deploy wms backend program by using docker container
+name: deploy wms backend program
 
 on:
   workflow_dispatch:
@@ -12,6 +12,17 @@ jobs:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
       REGISTRY_UN: ${{ secrets.REGISTRY_UN }}
       REGISTRY_PW: ${{ secrets.REGISTRY_PW  }}
+
+      DB_HOST: ${{ secrets.DB_HOST }}
+      DB_USER: ${{ secrets.DB_USER }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      DB_NAME: ${{ secrets.DB_NAME }}
+      DB_PORT: ${{ secrets.DB_PORT }}
+      TOKEN_SECRET_KEY: ${{ secrets.TOKEN_SECRET_KEY }}
+
+      SERVER_USER: ${{ secrets.SERVER_USER }}
+      SERVER_IP: ${{ secrets.SERVER_IP }}
+
       CONTAINER_NAME: ${{ vars.CONTAINER_NAME }}
       EXPOSED_PORT: ${{ vars.EXPOSED_PORT }}
       CONTAINER_PORT: ${{ vars.CONTAINER_PORT }}
@@ -30,11 +41,4 @@ jobs:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
       - name: run docker container
-        run: |
-          bash ./scripts/run-container.sh
-        env:
-          VERSION: ${{ env.VERSION }}
-          CONTAINER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
-          CONTAINER_NAME: ${{ env.CONTAINER_NAME }}
-          EXPOSED_PORT: ${{ env.EXPOSED_PORT }}
-          CONTAINER_PORT: ${{ env.CONTAINER_PORT }}
+        run: bash ./scripts/run-container.sh

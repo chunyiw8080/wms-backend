@@ -6,16 +6,18 @@ set -u
 : "CONTAINER_PORT"
 : "CONTAINER_REGISTRY"
 : "VERSION"
+: "SERVER_USER"
+: "SERVER_IP"
 
-ssh -o StrictHostKeyChecking=no user@server_ip << EOF
-docker stop "$CONTAINER_NAME" || true
-docker rm "$CONTAINER_NAME" || true
-docker pull "$CONTAINER_REGISTRY"/wms-backend:"$VERSION"
+ssh -o StrictHostKeyChecking=no "$SERVER_USER"@"$SERVER_IP" << EOF
+sudo docker stop "$CONTAINER_NAME" || true
+sudo docker rm "$CONTAINER_NAME" || true
+sudo docker pull "$CONTAINER_REGISTRY"/wms-backend:"$VERSION"
 if [ $? -ne 0 ]; then
     echo "Failed to pull docker image to the server"
     exit 1
 fi
-docker run -d --name "$CONTAINER_NAME" -p "$EXPOSED_PORT":"$CONTAINER_PORT" "$CONTAINER_REGISTRY"/wms-backend:"$VERSION"
+sudo docker run -d --name "$CONTAINER_NAME" -p "$EXPOSED_PORT":"$CONTAINER_PORT" "$CONTAINER_REGISTRY"/wms-backend:"$VERSION"
 if [ $? -ne 0]; then
     echo "Failed to run docker container"
     exit 1
