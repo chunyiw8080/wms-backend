@@ -8,10 +8,11 @@ set -u
 : "$VERSION"
 : "$SERVER_USER"
 : "$SERVER_IP"
+: "$SERVER_PORT"
 : "$REGISTRY_PW"
 : "$REGISTRY_UN"
 
-ssh -p 22990 -T -o StrictHostKeyChecking=no "$SERVER_USER"@"$SERVER_IP" << EOF
+ssh -p "$SERVER_PORT" -T -o StrictHostKeyChecking=no "$SERVER_USER"@"$SERVER_IP" << EOF
 sudo docker stop "$CONTAINER_NAME" || true
 sudo docker rm "$CONTAINER_NAME" || true
 sudo echo "$REGISTRY_PW" | docker login "$CONTAINER_REGISTRY" --username "$REGISTRY_UN" --password-stdin
